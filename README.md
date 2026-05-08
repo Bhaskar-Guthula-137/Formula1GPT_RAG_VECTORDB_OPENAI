@@ -1,47 +1,147 @@
-# OpenNext Starter
+# F1 GPT
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+An AI-powered Formula One assistant built with **Retrieval-Augmented Generation (RAG)**. Ask anything about F1 — race results, driver standings, technical regulations, history — and get answers grounded in real F1 data retrieved from a vector database.
 
-## Getting Started
+**Live demo:** [f1-gpt-app.bhaskarg.workers.dev](https://f1-gpt-app.bhaskarg.workers.dev/)
 
-Read the documentation at https://opennext.js.org/cloudflare.
+---
 
-## Develop
+<table>
+  <tr>
+    <td><img src="public/assets/home-chat-page.png" alt="F1 GPT Home" /></td>
+    <td><img src="public/assets/chat-suing-rag.png" alt="F1 GPT RAG in action" /></td>
+  </tr>
+  <tr>
+    <td align="center">Home — suggestion chips</td>
+    <td align="center">Chat — RAG context panel</td>
+  </tr>
+</table>
 
-Run the Next.js development server:
+---
+
+## How it works
+
+```
+User question
+     │
+     ▼
+Embed question (text-embedding-3-small)
+     │
+     ▼
+Query Cloudflare Vectorize (top-5 nearest chunks)
+     │
+     ▼
+Inject retrieved context into system prompt
+     │
+     ▼
+Stream response via GPT-4o-mini
+     │
+     ▼
+Display in chat UI with RAG metrics badge
+```
+
+1. **Scrape & chunk** — F1 data is scraped with Puppeteer, split into chunks, and embedded
+2. **Store** — Embeddings are stored in Cloudflare Vectorize (`f1-index`)
+3. **Retrieve** — At query time, the user's question is embedded and the top-5 most similar chunks are fetched
+4. **Generate** — Retrieved chunks are injected into the system prompt; GPT-4o-mini streams the answer
+5. **Observe** — A RAG metrics badge shows how many vectors were retrieved and their similarity scores
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16, React 19, Tailwind CSS v4 |
+| AI / Streaming | AI SDK v6 (`@ai-sdk/react`, `streamText`) |
+| LLM | OpenAI GPT-4o-mini |
+| Embeddings | OpenAI `text-embedding-3-small` |
+| Vector DB | Cloudflare Vectorize |
+| Deployment | Cloudflare Workers via OpenNext |
+| Scraping | Puppeteer |
+
+---
+
+## Features
+
+- **RAG pipeline** — grounded answers from a live F1 vector index, not just LLM hallucinations
+- **Streaming responses** — token-by-token streaming via AI SDK
+- **RAG metrics UI** — expandable badge shows retrieved chunk count and per-chunk similarity scores
+- **Rate limiting** — server-side per-IP limiter (5 req / 60s) with live client-side countdown
+- **Suggestion chips** — one-click starter questions on the empty state
+- **Markdown rendering** — formatted responses with react-markdown
+
+---
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── chat/route.ts        # Streaming RAG chat endpoint + rate limiter
+│   │   └── rag-stats/route.ts   # RAG metrics endpoint
+│   ├── page.tsx                 # Chat UI
+│   └── globals.css
+scripts/
+└── loadDb.ts                    # Scrape → embed → upload to Vectorize
+```
+
+---
+
+## Local development
 
 ```bash
+# Install dependencies
+npm install
+
+# Add your OpenAI key
+echo "OPENAI_API_KEY=sk-..." >> .env.local
+
+# Start dev server (no Vectorize — GPT base knowledge only)
 npm run dev
-# or similar package manager command
+
+# Start with Cloudflare Workers runtime (Vectorize available)
+npm run preview
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **Note:** Vectorize is a Cloudflare-only service. Run `npm run preview` to test the full RAG pipeline locally. `npm run dev` falls back to GPT's base knowledge.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-## Preview
-
-Preview the application locally on the Cloudflare runtime:
+## Seed the vector database
 
 ```bash
-npm run preview
-# or similar package manager command
+# Scrape F1 data, generate embeddings, write vectors.ndjson
+npm run seed
+
+# Upload vectors to Cloudflare Vectorize
+npm run db:upload
 ```
+
+---
 
 ## Deploy
 
-Deploy the application to Cloudflare:
-
 ```bash
 npm run deploy
-# or similar package manager command
 ```
 
-## Learn More
+Requires a Cloudflare account with a Vectorize index named `f1-index` and `OPENAI_API_KEY` set as a Workers secret:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+wrangler secret put OPENAI_API_KEY
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## What I learned
+
+Building this project gave me hands-on experience with the full RAG stack:
+
+- **Chunking strategy** — how chunk size affects retrieval quality
+- **Embedding models** — using `text-embedding-3-small` for semantic search
+- **Vector similarity** — interpreting cosine similarity scores (≥ 0.8 = strong match)
+- **Prompt engineering** — injecting retrieved context without confusing the LLM
+- **Streaming with AI SDK v6** — `streamText` + `toUIMessageStreamResponse()` + `useChat`
+- **Edge deployment** — running a full RAG pipeline on Cloudflare Workers (no Node.js runtime)
