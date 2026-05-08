@@ -19,19 +19,25 @@
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
 	},
-	"images": {
-		// Enable image optimization
-		// see https://opennext.js.org/cloudflare/howtos/image
-		"binding": "IMAGES"
-	},
-	"services": [
+	"vectorize": [
 		{
-			// Self-reference service binding, the service name must match the worker name
-			// see https://opennext.js.org/cloudflare/caching
-			"binding": "WORKER_SELF_REFERENCE",
-			"service": "f1-gpt-app"
+			"binding": "VECTORIZE",
+			"index_name": "f1-index"
 		}
 	],
+	// "images": {
+	// 	// Enable image optimization
+	// 	// see https://opennext.js.org/cloudflare/howtos/image
+	// 	"binding": "IMAGES"
+	// },
+	// "services": [
+	// 	{
+	// 		// Self-reference service binding, the service name must match the worker name
+	// 		// see https://opennext.js.org/cloudflare/caching
+	// 		"binding": "WORKER_SELF_REFERENCE",
+	// 		"service": "f1-gpt-app"
+	// 	}
+	// ],
 	"observability": {
 		"enabled": true
 	},

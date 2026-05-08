@@ -7,16 +7,30 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
+		"seed": "ts-node ./scripts/loadDb.ts",
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+		"db:upload": "wrangler vectorize insert f1-index --file=vectors.ndjson"
 	},
 	"dependencies": {
+		"@ai-sdk/openai": "^3.0.63",
+		"@ai-sdk/react": "^3.0.178",
+		"@langchain/community": "^1.1.28",
+		"@langchain/textsplitters": "^1.0.1",
 		"@opennextjs/cloudflare": "^1.19.6",
+		"@tailwindcss/typography": "^0.5.19",
+		"ai": "^6.0.176",
+		"langchain": "^1.4.0",
+		"lucide-react": "^1.14.0",
 		"next": "16.2.5",
+		"openai": "^6.36.0",
+		"puppeteer": "^24.43.0",
 		"react": "^19.1.7",
-		"react-dom": "^19.1.7"
+		"react-dom": "^19.1.7",
+		"react-markdown": "^10.1.0",
+		"ts-node": "^10.9.2"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",
@@ -24,6 +38,7 @@
 		"@types/node": "^25.6.0",
 		"@types/react": "^19.1.7",
 		"@types/react-dom": "^19.1.7",
+		"dotenv": "^17.4.2",
 		"eslint": "^9",
 		"eslint-config-next": "16.2.5",
 		"tailwindcss": "^4",
