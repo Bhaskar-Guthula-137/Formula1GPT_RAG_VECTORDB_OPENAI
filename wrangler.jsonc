@@ -19,6 +19,9 @@
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
 	},
+	"vars": {
+		"OPENAI_API_KEY": "[ENCRYPTION_KEY]"
+	},
 	"vectorize": [
 		{
 			"binding": "VECTORIZE",

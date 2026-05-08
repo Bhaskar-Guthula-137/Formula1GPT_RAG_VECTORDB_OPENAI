@@ -1,11 +1,54 @@
 import OpenAI from "openai";
 import { streamText, convertToModelMessages } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import type { CloudflareContext } from "@opennextjs/cloudflare";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { UIMessage } from 'ai';
 
-export const POST = async (request: Request, context: CloudflareContext) => {
-    const env = (context as any)?.env as CloudflareEnv | undefined;
+// ── Rate limiter ────────────────────────────────────────────────────────────
+// In-memory per worker instance. Fine for learning/testing.
+// For global limiting across all instances use Cloudflare KV or Durable Objects.
+const RATE_LIMIT = 5          // max requests
+const WINDOW_MS  = 60 * 1000  // per 60 seconds
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(ip: string): { allowed: boolean; resetIn: number } {
+    const now = Date.now()
+    const entry = rateLimitMap.get(ip)
+
+    if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+        return { allowed: true, resetIn: 0 }
+    }
+
+    if (entry.count >= RATE_LIMIT) {
+        return { allowed: false, resetIn: Math.ceil((entry.resetAt - now) / 1000) }
+    }
+
+    entry.count++
+    return { allowed: true, resetIn: 0 }
+}
+// ───────────────────────────────────────────────────────────────────────────
+
+export const POST = async (request: Request) => {
+    // Cloudflare sets CF-Connecting-IP; fallback to a static key in local dev
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+    const { allowed, resetIn } = checkRateLimit(ip)
+
+    if (!allowed) {
+        return Response.json(
+            { error: 'Rate limit exceeded', resetIn },
+            { status: 429, headers: { 'Retry-After': String(resetIn) } }
+        )
+    }
+
+    let env: CloudflareEnv | undefined;
+    try {
+        env = getCloudflareContext().env;
+    } catch {
+        // not in Cloudflare Workers runtime
+    }
+
     const { messages } = await request.json() as { messages: UIMessage[] };
 
     const lastMessage = messages[messages.length - 1];
@@ -14,7 +57,7 @@ export const POST = async (request: Request, context: CloudflareContext) => {
         .map((p) => (p as { type: 'text'; text: string }).text)
         .join('') ?? '';
 
-    const apiKey = process.env.OPENAI_API_KEY ?? env?.OPENAI_API_KEY;
+    const apiKey = env?.OPENAI_API_KEY ?? process.env.OPENAI_API_KEY;
     const openai = new OpenAI({ apiKey });
     const openaiProvider = createOpenAI({ apiKey });
 
